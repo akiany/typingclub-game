@@ -1,17 +1,19 @@
 <html>
 	<head>
 		<script type="text/javascript" src="js/jquery-1.12.3.min.js"></script>
-		<script type="text/javascript" src="js/phaser.js"></script>
+		<script type="text/javascript" src="js/phaser.min.js"></script>
 		<script type="text/javascript" src="js/game.js"></script>
 		<style type="text/css">
-			#my-game {
+			.game-normal {
 				padding: 0px;
-
-				/*width: 100%;
-				margin: 0px;*/
-
 				width: 800px;
 				margin: 50px auto;
+			}
+
+			.game-fullscreen {
+				padding: 0px;
+				width: 100%;
+				margin: 0px;
 			}
 
 			body {
@@ -24,7 +26,7 @@
 	</head>
 
 	<body>
-		<div id="my-game"></div>
+		<div id="game" class="game-normal"></div>
 	</body>
 
 </html>
