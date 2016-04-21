@@ -1,6 +1,10 @@
 var TypingNinja = {
     DEV_MODE: false,
-    FULL_SCREEN: false
+    FULL_SCREEN: false,
+    
+    // TYPE_MODE > options: 'next-balloon', 'current-balloon'
+    TYPE_MODE: 'current-balloon', 
+    // TYPE_MODE: 'next-balloon',
 };
 
 TypingNinja.Game = function() {
@@ -35,6 +39,7 @@ TypingNinja.Game = function() {
     this.cameraMoveSmoothness = 0.05; 
 
     this.balloons = [];
+    this.firstBalloon = true;
 };
 
 TypingNinja.Game.prototype = {
@@ -114,7 +119,12 @@ TypingNinja.Game.prototype = {
 
             var capturedKeyCode = keyboard.event.keyCode;
             var capturedChar = String.fromCharCode(capturedKeyCode);
-            var expectedChar = that.textToType.charAt(that.typingCursorPosition);
+            
+            var cursorPosition = (TypingNinja.TYPE_MODE == 'next-balloon')? 
+                                        that.typingCursorPosition + 1: 
+                                        that.typingCursorPosition;
+
+            var expectedChar = that.textToType.charAt(cursorPosition);
 
             if (capturedChar == expectedChar) {
                 that.blockingKeys = true;
@@ -175,6 +185,20 @@ TypingNinja.Game.prototype = {
         this.balloons[position] = this.add.sprite(positionXCoord, positionYCoord, this.pickBalloonStyle());
         this.balloons[position].anchor.setTo(0.5, 0.5);
 
+        if (TypingNinja.TYPE_MODE == 'next-balloon') {
+            if (!this.firstBalloon) {
+                this.addTextNodeToBalloon(position, character);
+            } else {
+                this.firstBalloon = false;
+            }
+        } else {
+            this.addTextNodeToBalloon(position, character);
+        }
+
+        this.physics.arcade.enable(this.balloons[position]);
+    },
+
+    addTextNodeToBalloon: function(position, character) {
         var balloonText = this.add.text(
             0, -30,
             character,
@@ -191,8 +215,6 @@ TypingNinja.Game.prototype = {
         balloonText.scale.y = 1;
 
         this.balloons[position].addChild(balloonText);
-
-        this.physics.arcade.enable(this.balloons[position]);
     },
 
     destroyBalloon: function(position) {
@@ -214,6 +236,17 @@ TypingNinja.Game.prototype = {
         this.player.animations.play('jump', 30, false);
 
         var nextPosition = this.getBalloonPosition(this.activeBalloon + 1);
+        
+        if (TypingNinja.TYPE_MODE == 'next-balloon') {
+            var nextBalloon = this.balloons[this.activeBalloon + 1];
+            var nextBalloonText = nextBalloon.children[0];
+            this.add.tween(nextBalloonText).to({
+                alpha: [1, 0]}, 200, Phaser.Easing.Linear.None, true
+            ).onComplete.add(function() {
+                nextBalloonText.destroy();
+            });
+        }
+
         var activePosition = this.getBalloonPosition(this.activeBalloon);
         var diffPosition = { x: nextPosition.x - activePosition.x, y: nextPosition.y - activePosition.y };
 

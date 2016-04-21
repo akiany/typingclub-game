@@ -1,8 +1,8 @@
 Todo:
 
+[x] Switch character typing logic to look ahead (user has to type character in next balloon to jump)
 [ ] Provide a starting platform for Ninja character
 [ ] Provide an ending platform for Ninja character
-[ ] Switch character typing logic to look ahead (user has to type character in next balloon to jump)
 
 [ ] Integrate typing engine components for accurate detection of typed characters
 [ ] Detect when player hits the bottom of screen and play a "life lost" animation
