@@ -1,5 +1,5 @@
 .cirin {
-	font-size:2em;
+	font-size: 2em;
 	border-radius: 100%;
 	height: 40px;
 	width: 40px;
@@ -8,14 +8,14 @@
 	font-family: 'Roboto', 'Noto', sans-serif;
 	background-color: #f7931e;
 	color: white;
-	border:1px solid white;
+	border: 1px solid white;
 }
 
 .cirout {
 	border-radius: 100%;
 	border: 5px solid #f7931e;
-	display:inline-block;
-	margin:2px;
+	display: inline-block;
+	margin: 2px;
 }
 
 .off {
@@ -34,26 +34,27 @@
 	font-family: 'Roboto', 'Noto', sans-serif;
 	background-color: #cccccc;
 	color: #cccccc;
-	border:1px solid white;
+	border: 1px solid white;
+	opacity: 1;
 }
 
 .leftSec, .rightSec {
-	display:inline-block;
+	display: inline-block;
 }
 
 .leftSec {
-	margin-right: 50px;
+	margin-right: 135px;
 }
 
 .row-common {	
-    height:18em;
+    height: 18em;
 }
 
 #rows {
-	position:fixed;
+	position: fixed;
     top: 20%;
     left: 50%;
-    width: 600px;
-    margin-top: -30px; /*set to a negative number 1/2 of your height*/
-    margin-left: -300px; /*set to a negative number 1/2 of your width*/
+    width: 670px;
+    margin-top: -30px; 
+    margin-left: -320px;
 }

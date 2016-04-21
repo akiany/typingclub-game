@@ -41,26 +41,37 @@ function createCircle(chare){
 window.addEventListener("keypress", dealWithKeyboard, true);
 	
 function dealWithKeyboard(e){
+	$(".cirout").first().finish();
 	var desired_Char=$('.cirout').first().children().text();
 	var typed_char = String.fromCharCode(e.keyCode);
 
 	if(typed_char.toUpperCase()==desired_Char.toUpperCase()){
-		$(".cirout").first().transition({
-				perspective: '100px',
-				rotateY: '180deg',
-				duration: 100,
-				complete: function() {
-					$('.row-common.active').find('.cirout').first().children().addClass('cirinoff').removeClass('cirin');
-					$(this).addClass('off').removeClass('cirout');
-					detectEndOfRow();
-				}
-		});	
+		var f = function() {
+			$('.row-common.active').find('.cirout').first().children().
+				addClass('cirinoff').removeClass('cirin');
+			$(this).addClass('off').removeClass('cirout');
+			detectEndOfRow();
+		};
+
+		$(".cirout").first().animate({opacity: '0.6'}, 400, f);
+		// $(".cirout").first().transition({
+		// 		perspective: '100px',
+		// 		rotateY: '180deg',
+		// 		duration: 1000	,
+		// 		complete: function() {
+		// 			$('.row-common.active').find('.cirout').first().children().
+		// 				addClass('cirinoff').removeClass('cirin');
+		// 			$(this).addClass('off').removeClass('cirout');
+		// 			detectEndOfRow();
+		// 		}
+		// });	
 	} else {
 		$(".cirout").first().transition({
 				perspective: '100px',
 				rotateX: '180deg',
 				complete: function() {
-					$('.row-common.active').find(".cirout").first().transition({perspective: '100px',rotateX: '0deg'});
+					$('.row-common.active').find(".cirout").first().
+						transition({perspective: '100px',rotateX: '0deg'});
 				}
 		});	
 	};
