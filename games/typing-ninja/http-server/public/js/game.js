@@ -1,22 +1,38 @@
+function getWindowDimensions() {
+    return {
+        width: $(window).width(),
+        height: $(window).height() 
+    };
+}
+
+// $(window).resize(function() {});
+
 var TypingNinja = {
+    STANDARD_DIMENSIONS: { x: 800, y: 600 },
     DEV_MODE: false,
-    FULL_SCREEN: false,
-    
+    FULL_SCREEN: true,
+
+    RANDOMIZE_BALLOONS: true,
+    RANDOMIZE_AMOUNT: 50,
+
     // TYPE_MODE > options: 'next-balloon', 'current-balloon'
-    TYPE_MODE: 'current-balloon', 
-    // TYPE_MODE: 'next-balloon',
+    // TYPE_MODE: 'current-balloon',
+    TYPE_MODE: 'next-balloon',
 };
 
 TypingNinja.Game = function() {
+    // scene objects
     this.player = null;
     this.bgClouds = null;
     this.bgStatic = null;
+    this.rockRight = null;
 
     this.textToType = "TYPINGNINJAISAGREATGAME";
+    // this.textToType = "TYPING";
     this.typingCursorPosition = 0;
     this.blockingKeys = false;
 
-    this.gamePace = 2;
+    this.gamePace = 5;
     this.gameWidth = null;
     this.dropSpeed = null;
     this.cloudSpeed = 0.3;
@@ -40,12 +56,18 @@ TypingNinja.Game = function() {
 
     this.balloons = [];
     this.firstBalloon = true;
+
+    this.score = 0;
+    this.bufferScore = 0;
+    this.scoreText = null;
 };
 
 TypingNinja.Game.prototype = {
     init: function() {
         this.gameWidth = this.textToType.length * 300;
         this.dropSpeed = 0.3 * this.gamePace;
+
+        // this.scale.scaleMode = Phaser.ScaleManager.RESIZE;
     },
 
     preload: function() {
@@ -58,6 +80,8 @@ TypingNinja.Game.prototype = {
         this.load.spritesheet('balloon-purple', 'assets/simple_balloon_purple.png', 103, 174, 1);
         this.load.spritesheet('balloon-blue', 'assets/simple_balloon_blue.png', 103, 174, 1);
         // this.load.spritesheet('balloon-dark', 'assets/simple_balloon_dark.png', 103, 174, 1);
+
+        // this.load.image('rock-right', 'assets/rock-right.png');
     },
 
     create: function() {
@@ -65,11 +89,16 @@ TypingNinja.Game.prototype = {
             this.time.advancedTiming = true;    
         }
 
-        this.world.setBounds(0, 0, this.gameWidth, 600);
+        this.world.setBounds(0, 0, this.gameWidth, this.game.height);
 
         // static background (gradient sky)
         this.bgStatic = this.add.tileSprite(0, 0, this.game.width, this.game.height, 'bg-static');
         this.bgStatic.fixedToCamera = true;
+
+        if (TypingNinja.FULL_SCREEN) {
+            var scale = Math.max(this.game.height / TypingNinja.STANDARD_DIMENSIONS.y, 1);
+            this.bgStatic.scale.y = scale;
+        }
 
         // moving clouds
         this.bgClouds = this.add.tileSprite(0, 0, this.gameWidth, this.cache.getImage('bg-clouds').height, 'bg-clouds');
@@ -77,22 +106,28 @@ TypingNinja.Game.prototype = {
         this.bgClouds.tileScale.y = 1;
         this.bgClouds.alpha = 0.5;
 
+        // this.rockRight = this.add.sprite(this.gameWidth - this.cache.getImage('rock-right').width, 300, 'rock-right');
+        // this.rockRight.anchor.setTo(1, 0);
+        // this.rockRight
+
         for(var i=0; i<this.textToType.length; i++) {
             this.createBalloon(i+1, this.textToType[i]);
         }
 
-        this.player = this.add.sprite(
+        var player = this.add.sprite(
             this.getBalloonPosition(this.activeBalloon).x, 
             this.getBalloonPosition(this.activeBalloon).y, 
             'ninja');
 
-        this.player.scale.x = 0.9;
-        this.player.scale.y = 0.9;
-        this.player.anchor.setTo(0.5, 0.1);
+        this.player = player;
 
-        this.cameraPos.setTo(this.player.x, this.player.y);
+        player.scale.x = 0.9;
+        player.scale.y = 0.9;
+        player.anchor.setTo(0.5, 0.1);
 
-        jumpAnimation = this.player.animations.add('jump', [0, 1, 2, 3, 4, 5, 6, 7], 30, true);
+        this.cameraPos.setTo(player.x, player.y);
+
+        jumpAnimation = this.player.animations.add('jump', [0, 1, 3, 5, 5, 3, 1, 0], 30, true);
         // wrongAnimation = this.player.animations.add('wrong', [0, 3, 0, 3, 0], 30, true);
 
         jumpAnimation.onComplete.add(
@@ -109,6 +144,7 @@ TypingNinja.Game.prototype = {
 
         //  enable physics on the player
         this.physics.arcade.enable(this.player);
+        // this.player.body.collideWorldBounds = true;
 
         var keyboard = this.input.keyboard;
         var that = this;
@@ -127,26 +163,53 @@ TypingNinja.Game.prototype = {
             var expectedChar = that.textToType.charAt(cursorPosition);
 
             if (capturedChar == expectedChar) {
+                that.addScore(10);
                 that.blockingKeys = true;
                 that.typingCursorPosition++;
                 that.jump();
             } else {
                 // wrong();
             }
-        };        
+        };
+
+        this.scoreText = this.game.add.text(10, 10, 'Score : ' + this.score, {
+                fontSize: '20px',
+                fill: '#ddd', 
+                stroke: "#555",
+                strokeThickness: 2
+        });
+
+        this.scoreText.fixedToCamera = true;
     },
 
     update: function() {
+        var player = this.player;
+
         if (TypingNinja.DEV_MODE) {
             this.game.debug.text("FPS: " + this.time.fps, 2, 14, "#00ff00");    
+        }
+
+        if (!this.player.inWorld) {
+
+        }
+
+        if (this.bufferScore < this.score) {
+            this.bufferScore++;
+            this.scoreText.text = 'Score : ' + this.bufferScore;
         }
         
         this.bgClouds.tilePosition.x -= this.cloudSpeed;
 
         // frontMountains.tilePosition.x -= cloudSpeed * 2;
 
-        this.player.body.position.y += this.dropSpeed;
-        this.balloons[this.activeBalloon].body.position.y += this.dropSpeed;
+        player.body.position.y += this.dropSpeed;
+        
+        var activeBalloon = this.getActiveBalloon();
+        activeBalloon.body.position.y += this.dropSpeed;
+
+        if (this.game.height - player.body.position.y < this.game.height / 2) {
+            this.flashBalloon(activeBalloon);
+        }
 
         this.moveCamera();
     },
@@ -155,8 +218,11 @@ TypingNinja.Game.prototype = {
         if (TypingNinja.DEV_MODE) {
             this.game.debug.cameraInfo(this.game.camera, 400, 450);
             this.game.debug.spriteCoords(this.player, 400, 550);
-        }
-        
+        }  
+    },
+
+    addScore: function(value) {
+        this.score += value;
     },
 
     pickBalloonStyle: function() {
@@ -171,7 +237,18 @@ TypingNinja.Game.prototype = {
         return balloonStyles[Math.floor(Math.random() * balloonStyles.length)];
     },
 
+    getActiveBalloon: function() {
+        return this.balloons[this.activeBalloon];
+    },
+
     getBalloonPosition: function(balloonIndex) {
+        // if (balloonIndex > this.textToType.length) {
+        //     return {
+        //         x: this.player.body.position.x + 100,
+        //         y: this.player.body.position.y - 1000
+        //     }
+        // }
+
         return {
             x: this.balloons[balloonIndex].position.x + this.playerBalloonOffset.x,
             y: this.balloons[balloonIndex].position.y + this.playerBalloonOffset.y
@@ -179,26 +256,31 @@ TypingNinja.Game.prototype = {
     },
 
     createBalloon: function(position, character) {
-        var positionXCoord = this.balloonStartPosition.x + ((position - 1) * this.balloonSpacing + Math.random() * 50);
-        var positionYCoord = this.balloonStartPosition.y + Math.random() * 50;
+        var positionXCoord = this.balloonStartPosition.x + ((position - 1) * this.balloonSpacing + 
+                                ((TypingNinja.RANDOMIZE_BALLOONS)? Math.random() * TypingNinja.RANDOMIZE_AMOUNT: 0));
 
-        this.balloons[position] = this.add.sprite(positionXCoord, positionYCoord, this.pickBalloonStyle());
-        this.balloons[position].anchor.setTo(0.5, 0.5);
+        var positionYCoord = this.balloonStartPosition.y + 
+                                ((TypingNinja.RANDOMIZE_BALLOONS)? Math.random() * TypingNinja.RANDOMIZE_AMOUNT: 0);
+
+        var balloon = this.add.sprite(positionXCoord, positionYCoord, this.pickBalloonStyle());
+        this.balloons[position] = balloon;
+        balloon.anchor.setTo(0.5, 0.5);
+        balloon.state = { flashing: false };
 
         if (TypingNinja.TYPE_MODE == 'next-balloon') {
             if (!this.firstBalloon) {
-                this.addTextNodeToBalloon(position, character);
+                this.addTextNodeToBalloon(balloon, character);
             } else {
                 this.firstBalloon = false;
             }
         } else {
-            this.addTextNodeToBalloon(position, character);
+            this.addTextNodeToBalloon(balloon, character);
         }
 
-        this.physics.arcade.enable(this.balloons[position]);
+        this.physics.arcade.enable(balloon);        
     },
 
-    addTextNodeToBalloon: function(position, character) {
+    addTextNodeToBalloon: function(balloon, character) {
         var balloonText = this.add.text(
             0, -30,
             character,
@@ -214,12 +296,26 @@ TypingNinja.Game.prototype = {
         balloonText.scale.x = 1;
         balloonText.scale.y = 1;
 
-        this.balloons[position].addChild(balloonText);
+        balloon.addChild(balloonText);
+    },
+
+    flashBalloon: function(balloon) {
+        if (balloon.state.flashing) {
+            return;
+        }
+    
+        balloon.anchor.setTo(0.5, 0.5);
+
+        var tween = this.add.tween(balloon).to({
+            alpha: [1, 0.5]
+        }, 200, Phaser.Easing.Linear.None, true, 0, -1);
+
+        balloon.state.flashing = true;
     },
 
     destroyBalloon: function(position) {
         var balloon = this.balloons[position];
-        // balloon.anchor.setTo(0.5, 0.5);
+        balloon.anchor.setTo(0.5, 0.5);
 
         var tween = this.add.tween(balloon).to({
             alpha: [1, 0], y: [150]
@@ -233,7 +329,8 @@ TypingNinja.Game.prototype = {
     },
 
     jump: function() {
-        this.player.animations.play('jump', 30, false);
+        var player = this.player;
+        player.animations.play('jump', 30, false);
 
         var nextPosition = this.getBalloonPosition(this.activeBalloon + 1);
         
@@ -250,7 +347,7 @@ TypingNinja.Game.prototype = {
         var activePosition = this.getBalloonPosition(this.activeBalloon);
         var diffPosition = { x: nextPosition.x - activePosition.x, y: nextPosition.y - activePosition.y };
 
-        this.add.tween(this.player).to({
+        this.add.tween(player).to({
             x: [
                 activePosition.x,
                 activePosition.x + diffPosition.x / 4,
@@ -264,7 +361,7 @@ TypingNinja.Game.prototype = {
                 nextPosition.y - 50,
                 nextPosition.y
             ]
-        }, 200, Phaser.Easing.Linear.None, true);
+        }, 150, Phaser.Easing.Linear.None, true);
 
         // bgClouds.tilePosition.x -= 0.2;
     },
@@ -282,23 +379,16 @@ TypingNinja.Game.prototype = {
 };
 
 function run() {
-    function getWindowDimensions() {
-        return {
-            width: $(window).width(),
-            height: $(window).height() 
-        };
-    }
-
     var windowDimensions = {width: 800, height: 600};
 
     if (TypingNinja.FULL_SCREEN) {
-        var windowDimensions = getWindowDimensions();
+        windowDimensions = getWindowDimensions();
         $('.game-normal').removeClass('game-normal').addClass('game-fullscreen');
     }
 
     var game = new Phaser.Game(
-        windowDimensions.width, 
-        windowDimensions.height,
+        windowDimensions.width, windowDimensions.height,
+        // '100%', '100%',
         Phaser.AUTO, 'game', null, false, true);
 
     game.state.add('TypingNinja.Game', TypingNinja.Game);

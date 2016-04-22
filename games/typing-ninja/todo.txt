@@ -4,6 +4,8 @@ Todo:
 [ ] Provide a starting platform for Ninja character
 [ ] Provide an ending platform for Ninja character
 
+[ ] 
+
 [ ] Integrate typing engine components for accurate detection of typed characters
 [ ] Detect when player hits the bottom of screen and play a "life lost" animation
 
