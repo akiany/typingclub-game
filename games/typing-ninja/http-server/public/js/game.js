@@ -31,8 +31,8 @@ TypingNinja.Game = function() {
     this.cliffRight = null;
     this.valley = null;
 
-    this.textToType = "TYPINGNINJAISAGREATGAME";
-    // this.textToType = "TYPING";
+    // this.textToType = "TYPING NINJA IS A GREAT GAME FOR EVERYONE TO PRACTICE";
+    this.textToType = "TYPING NINJA";
     this.typingCursorPosition = 0;
     this.blockingKeys = false;
 
@@ -111,10 +111,8 @@ TypingNinja.Game.prototype = {
         }
 
         var mountainHeigh = this.cache.getImage('bg-mountain').height;
-        this.bgMountain = this.add.tileSprite(0, this.game.height - mountainHeigh, this.gameWidth, mountainHeigh, 'bg-mountain');
-        
-        var valleyHeight = this.cache.getImage('valley').height;
-        this.valley = this.add.tileSprite(0, this.game.height - valleyHeight, this.gameWidth, valleyHeight, 'valley');
+        this.bgMountain = this.add.tileSprite(0, this.game.height - mountainHeigh - (this.game.height / 6), this.gameWidth, mountainHeigh, 'bg-mountain');
+
 
         // moving clouds
         this.cloudSmall = this.add.tileSprite(0, 0, this.gameWidth, this.cache.getImage('cloud-small').height, 'cloud-small');
@@ -130,6 +128,16 @@ TypingNinja.Game.prototype = {
         for(var i=0; i<this.textToType.length; i++) {
             this.createBalloon(i+1, this.textToType[i]);
         }
+
+        var cliffLeftHeight = this.cache.getImage('cliff-left').height;
+        this.cliffLeft = this.add.sprite(0, this.game.height - cliffLeftHeight, 'cliff-left');
+        
+        var cliffRightHeight = this.cache.getImage('cliff-right').height;
+        var cliffRightWidth = this.cache.getImage('cliff-right').width;
+        this.cliffRight = this.add.sprite(this.gameWidth - cliffRightWidth, this.game.height - cliffRightHeight, 'cliff-right');
+        
+        var valleyHeight = this.cache.getImage('valley').height;
+        this.valley = this.add.tileSprite(0, this.game.height - valleyHeight, this.gameWidth, valleyHeight, 'valley');
 
         var player = this.add.sprite(
             this.getBalloonPosition(this.activeBalloon).x, 
@@ -197,13 +205,6 @@ TypingNinja.Game.prototype = {
         });
 
         this.scoreText.fixedToCamera = true;
-
-        var cliffLeftHeight = this.cache.getImage('cliff-left').height;
-        this.cliffLeft = this.add.sprite(0, this.game.height - cliffLeftHeight, 'cliff-left');
-        
-        var cliffRightHeight = this.cache.getImage('cliff-right').height;
-        var cliffRightWidth = this.cache.getImage('cliff-right').width;
-        this.cliffRight = this.add.sprite(this.gameWidth - cliffRightWidth, this.game.height - cliffRightHeight, 'cliff-right');
     },
 
     update: function() {
