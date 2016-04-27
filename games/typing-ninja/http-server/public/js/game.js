@@ -9,7 +9,7 @@ function getWindowDimensions() {
 
 var TypingNinja = {
     STANDARD_DIMENSIONS: { x: 800, y: 600 },
-    DEV_MODE: false,
+    DEV_MODE: true,
     FULL_SCREEN: true,
 
     RANDOMIZE_BALLOONS: true,
@@ -31,8 +31,8 @@ TypingNinja.Game = function() {
     this.cliffRight = null;
     this.valley = null;
 
-    // this.textToType = "TYPING NINJA IS A GREAT GAME FOR EVERYONE TO PRACTICE";
-    this.textToType = "TYPING NINJA";
+    this.textToType = "TYPING NINJA IS A GREAT GAME FOR EVERYONE TO PRACTICE";
+    // this.textToType = "TYPING NINJA";
     this.typingCursorPosition = 0;
     this.blockingKeys = false;
 
@@ -125,10 +125,6 @@ TypingNinja.Game.prototype = {
         this.cloudBig.tileScale.y = 1;
         this.cloudBig.alpha = 0.4;
 
-        for(var i=0; i<this.textToType.length; i++) {
-            this.createBalloon(i+1, this.textToType[i]);
-        }
-
         var cliffLeftHeight = this.cache.getImage('cliff-left').height;
         this.cliffLeft = this.add.sprite(0, this.game.height - cliffLeftHeight, 'cliff-left');
         
@@ -138,6 +134,10 @@ TypingNinja.Game.prototype = {
         
         var valleyHeight = this.cache.getImage('valley').height;
         this.valley = this.add.tileSprite(0, this.game.height - valleyHeight, this.gameWidth, valleyHeight, 'valley');
+
+        for(var i=0; i<this.textToType.length; i++) {
+            this.createBalloon(i+1, this.textToType[i]);
+        }
 
         var player = this.add.sprite(
             this.getBalloonPosition(this.activeBalloon).x, 
@@ -210,10 +210,6 @@ TypingNinja.Game.prototype = {
     update: function() {
         var player = this.player;
 
-        if (TypingNinja.DEV_MODE) {
-            this.game.debug.text("FPS: " + this.time.fps, 2, 14, "#00ff00");    
-        }
-
         if (!this.player.inWorld) {
 
         }
@@ -223,7 +219,6 @@ TypingNinja.Game.prototype = {
             this.scoreText.text = 'Score : ' + this.bufferScore;
         }
         
-        // this.cloudSmall.tilePosition.x -= this.cloudSpeed;
         this.cloudBig.tilePosition.x -= this.cloudSpeed;
 
         player.body.position.y += this.dropSpeed;
@@ -246,9 +241,8 @@ TypingNinja.Game.prototype = {
 
     render: function() {
         if (TypingNinja.DEV_MODE) {
-            this.game.debug.cameraInfo(this.game.camera, 400, 450);
-            this.game.debug.spriteCoords(this.player, 400, 550);
-        }  
+            this.game.debug.text("FPS: " + this.time.fps, 2, 14, "#00ff00");    
+        }
     },
 
     addScore: function(value) {
@@ -272,13 +266,6 @@ TypingNinja.Game.prototype = {
     },
 
     getBalloonPosition: function(balloonIndex) {
-        // if (balloonIndex > this.textToType.length) {
-        //     return {
-        //         x: this.player.body.position.x + 100,
-        //         y: this.player.body.position.y - 1000
-        //     }
-        // }
-
         return {
             x: this.balloons[balloonIndex].position.x + this.playerBalloonOffset.x,
             y: this.balloons[balloonIndex].position.y + this.playerBalloonOffset.y
@@ -394,9 +381,6 @@ TypingNinja.Game.prototype = {
                 nextPosition.y
             ]
         }, 150, Phaser.Easing.Linear.None, true);
-
-        // cloudSmall.tilePosition.x -= 0.2;
-        // cloudBig.tilePosition.x -= 0.2;
     },
 
     // wrong: function() {
@@ -422,7 +406,7 @@ function run() {
     var game = new Phaser.Game(
         windowDimensions.width, windowDimensions.height,
         // '100%', '100%',
-        Phaser.AUTO, 'game', null, false, true);
+        Phaser.CANVAS, 'game', null, false, true);
 
     game.state.add('TypingNinja.Game', TypingNinja.Game);
     game.state.start('TypingNinja.Game');
