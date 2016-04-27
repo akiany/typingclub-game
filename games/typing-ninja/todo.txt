@@ -13,3 +13,8 @@ Todo:
 [ ] 
 [ ] 
 [ ] 
+
+
+
+# to start a web server using python
+python -m SimpleHTTPServer 8008
