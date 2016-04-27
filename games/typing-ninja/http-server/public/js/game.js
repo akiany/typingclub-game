@@ -23,9 +23,13 @@ var TypingNinja = {
 TypingNinja.Game = function() {
     // scene objects
     this.player = null;
-    this.bgClouds = null;
-    this.bgStatic = null;
-    this.rockRight = null;
+    this.cloudSmall = null;
+    // this.cloudBig = null;
+    this.bgSky = null;
+    this.bgMountain = null;
+    this.cliffLeft = null;
+    this.cliffRight = null;
+    this.valley = null;
 
     this.textToType = "TYPINGNINJAISAGREATGAME";
     // this.textToType = "TYPING";
@@ -35,7 +39,7 @@ TypingNinja.Game = function() {
     this.gamePace = 5;
     this.gameWidth = null;
     this.dropSpeed = null;
-    this.cloudSpeed = 0.3;
+    this.cloudSpeed = 0.1;
 
     this.activeBalloon = 1;
     this.balloonSpacing = 200;
@@ -64,15 +68,23 @@ TypingNinja.Game = function() {
 
 TypingNinja.Game.prototype = {
     init: function() {
-        this.gameWidth = this.textToType.length * 300;
+        this.gameWidth = ((this.textToType.length + 1) * this.balloonSpacing) + this.balloonStartPosition.x;
         this.dropSpeed = 0.3 * this.gamePace;
 
         // this.scale.scaleMode = Phaser.ScaleManager.RESIZE;
     },
 
     preload: function() {
-        this.load.image('bg-static', 'assets/bg-blue.png');
-        this.load.image('bg-clouds', 'assets/clouds.png');
+        this.load.image('bg-sky', 'assets/bg_sky.png');
+        
+        this.load.image('cloud-small', 'assets/cloud_small.png');
+        this.load.image('cloud-big', 'assets/cloud_big.png');
+
+        this.load.image('cliff-left', 'assets/cliff_left.png');
+        this.load.image('cliff-right', 'assets/cliff_right.png');
+        
+        this.load.image('valley', 'assets/valley.png');
+        this.load.image('bg-mountain', 'assets/bg_mountain.png');
         
         this.load.spritesheet('ninja', 'assets/Ninja_sprite_03_sized.png', 170, 170, 10);
         this.load.spritesheet('balloon-yellow', 'assets/simple_balloon_yellow.png', 103, 174, 1);
@@ -80,8 +92,6 @@ TypingNinja.Game.prototype = {
         this.load.spritesheet('balloon-purple', 'assets/simple_balloon_purple.png', 103, 174, 1);
         this.load.spritesheet('balloon-blue', 'assets/simple_balloon_blue.png', 103, 174, 1);
         // this.load.spritesheet('balloon-dark', 'assets/simple_balloon_dark.png', 103, 174, 1);
-
-        // this.load.image('rock-right', 'assets/rock-right.png');
     },
 
     create: function() {
@@ -92,23 +102,30 @@ TypingNinja.Game.prototype = {
         this.world.setBounds(0, 0, this.gameWidth, this.game.height);
 
         // static background (gradient sky)
-        this.bgStatic = this.add.tileSprite(0, 0, this.game.width, this.game.height, 'bg-static');
-        this.bgStatic.fixedToCamera = true;
+        this.bgSky = this.add.tileSprite(0, 0, this.game.width, this.game.height, 'bg-sky');
+        this.bgSky.fixedToCamera = true;
 
         if (TypingNinja.FULL_SCREEN) {
             var scale = Math.max(this.game.height / TypingNinja.STANDARD_DIMENSIONS.y, 1);
-            this.bgStatic.scale.y = scale;
+            this.bgSky.scale.y = scale;
         }
 
-        // moving clouds
-        this.bgClouds = this.add.tileSprite(0, 0, this.gameWidth, this.cache.getImage('bg-clouds').height, 'bg-clouds');
-        this.bgClouds.tileScale.x = 1;
-        this.bgClouds.tileScale.y = 1;
-        this.bgClouds.alpha = 0.5;
+        var mountainHeigh = this.cache.getImage('bg-mountain').height;
+        this.bgMountain = this.add.tileSprite(0, this.game.height - mountainHeigh, this.gameWidth, mountainHeigh, 'bg-mountain');
+        
+        var valleyHeight = this.cache.getImage('valley').height;
+        this.valley = this.add.tileSprite(0, this.game.height - valleyHeight, this.gameWidth, valleyHeight, 'valley');
 
-        // this.rockRight = this.add.sprite(this.gameWidth - this.cache.getImage('rock-right').width, 300, 'rock-right');
-        // this.rockRight.anchor.setTo(1, 0);
-        // this.rockRight
+        // moving clouds
+        this.cloudSmall = this.add.tileSprite(0, 0, this.gameWidth, this.cache.getImage('cloud-small').height, 'cloud-small');
+        this.cloudSmall.tileScale.x = 1;
+        this.cloudSmall.tileScale.y = 1;
+        this.cloudSmall.alpha = 0.2;
+
+        this.cloudBig = this.add.tileSprite(0, 0, this.gameWidth, this.cache.getImage('cloud-big').height, 'cloud-big');
+        this.cloudBig.tileScale.x = 1;
+        this.cloudBig.tileScale.y = 1;
+        this.cloudBig.alpha = 0.4;
 
         for(var i=0; i<this.textToType.length; i++) {
             this.createBalloon(i+1, this.textToType[i]);
@@ -180,6 +197,13 @@ TypingNinja.Game.prototype = {
         });
 
         this.scoreText.fixedToCamera = true;
+
+        var cliffLeftHeight = this.cache.getImage('cliff-left').height;
+        this.cliffLeft = this.add.sprite(0, this.game.height - cliffLeftHeight, 'cliff-left');
+        
+        var cliffRightHeight = this.cache.getImage('cliff-right').height;
+        var cliffRightWidth = this.cache.getImage('cliff-right').width;
+        this.cliffRight = this.add.sprite(this.gameWidth - cliffRightWidth, this.game.height - cliffRightHeight, 'cliff-right');
     },
 
     update: function() {
@@ -198,9 +222,8 @@ TypingNinja.Game.prototype = {
             this.scoreText.text = 'Score : ' + this.bufferScore;
         }
         
-        this.bgClouds.tilePosition.x -= this.cloudSpeed;
-
-        // frontMountains.tilePosition.x -= cloudSpeed * 2;
+        // this.cloudSmall.tilePosition.x -= this.cloudSpeed;
+        this.cloudBig.tilePosition.x -= this.cloudSpeed;
 
         player.body.position.y += this.dropSpeed;
         
@@ -212,6 +235,12 @@ TypingNinja.Game.prototype = {
         }
 
         this.moveCamera();
+
+        this.bgMountain.x = this.camera.x * 0.5;
+        this.valley.x = this.camera.x * 0.2;
+
+        this.cloudSmall.x = this.camera.x * 0.5;
+        this.cloudBig.x = this.camera.x * 0.3;
     },
 
     render: function() {
@@ -256,8 +285,10 @@ TypingNinja.Game.prototype = {
     },
 
     createBalloon: function(position, character) {
-        var positionXCoord = this.balloonStartPosition.x + ((position - 1) * this.balloonSpacing + 
-                                ((TypingNinja.RANDOMIZE_BALLOONS)? Math.random() * TypingNinja.RANDOMIZE_AMOUNT: 0));
+        // var positionXCoord = this.balloonStartPosition.x + ((position - 1) * this.balloonSpacing + 
+        //                         ((TypingNinja.RANDOMIZE_BALLOONS)? Math.random() * TypingNinja.RANDOMIZE_AMOUNT: 0));
+
+        var positionXCoord = this.balloonStartPosition.x + ((position - 1) * this.balloonSpacing);
 
         var positionYCoord = this.balloonStartPosition.y + 
                                 ((TypingNinja.RANDOMIZE_BALLOONS)? Math.random() * TypingNinja.RANDOMIZE_AMOUNT: 0);
@@ -363,7 +394,8 @@ TypingNinja.Game.prototype = {
             ]
         }, 150, Phaser.Easing.Linear.None, true);
 
-        // bgClouds.tilePosition.x -= 0.2;
+        // cloudSmall.tilePosition.x -= 0.2;
+        // cloudBig.tilePosition.x -= 0.2;
     },
 
     // wrong: function() {
