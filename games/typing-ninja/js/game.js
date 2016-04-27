@@ -31,8 +31,6 @@ TypingNinja.Game = function() {
     this.cliffRight = null;
     this.valley = null;
 
-    this.textToType = "TYPING NINJA IS A GREAT GAME FOR EVERYONE TO PRACTICE";
-    // this.textToType = "TYPING NINJA";
     this.typingCursorPosition = 0;
     this.blockingKeys = false;
 
@@ -64,11 +62,13 @@ TypingNinja.Game = function() {
     this.score = 0;
     this.bufferScore = 0;
     this.scoreText = null;
+
+    this.core = new TypingCore(env);
 };
 
 TypingNinja.Game.prototype = {
     init: function() {
-        this.gameWidth = ((this.textToType.length + 1) * this.balloonSpacing) + this.balloonStartPosition.x;
+        this.gameWidth = ((env.text.length + 1) * this.balloonSpacing) + this.balloonStartPosition.x;
         this.dropSpeed = 0.3 * this.gamePace;
 
         // this.scale.scaleMode = Phaser.ScaleManager.RESIZE;
@@ -135,8 +135,8 @@ TypingNinja.Game.prototype = {
         var valleyHeight = this.cache.getImage('valley').height;
         this.valley = this.add.tileSprite(0, this.game.height - valleyHeight, this.gameWidth, valleyHeight, 'valley');
 
-        for(var i=0; i<this.textToType.length; i++) {
-            this.createBalloon(i+1, this.textToType[i]);
+        for(var i=0; i<env.text.length; i++) {
+            this.createBalloon(i+1, env.text[i]);
         }
 
         var player = this.add.sprite(
@@ -172,30 +172,37 @@ TypingNinja.Game.prototype = {
         // this.player.body.collideWorldBounds = true;
 
         var keyboard = this.input.keyboard;
-        var that = this;
-        keyboard.onDownCallback = function() {
-            if (that.blockingKeys) {
+        keyboard.onPressCallback = function() {
+            if (this.blockingKeys) {
                 return;
             }
 
-            var capturedKeyCode = keyboard.event.keyCode;
+            var capturedKeyCode = keyboard.pressEvent.keyCode;
             var capturedChar = String.fromCharCode(capturedKeyCode);
             
             var cursorPosition = (TypingNinja.TYPE_MODE == 'next-balloon')? 
-                                        that.typingCursorPosition + 1: 
-                                        that.typingCursorPosition;
+                                        this.typingCursorPosition + 1: 
+                                        this.typingCursorPosition;
 
-            var expectedChar = that.textToType.charAt(cursorPosition);
+            // var expectedChar = env.text.charAt(cursorPosition);
 
-            if (capturedChar == expectedChar) {
-                that.addScore(10);
-                that.blockingKeys = true;
-                that.typingCursorPosition++;
-                that.jump();
+            var delay = this.core.record_keydown_time(capturedChar);
+            var is_valid = this.core.cur_char.keydown(capturedChar, delay);
+
+            if(this.core.is_done())
+                return this.core.submit_score();
+
+            if (is_valid) {
+                this.core.goto_next_char();
+                this.addScore(10);
+                this.blockingKeys = true;
+                this.typingCursorPosition++;
+                this.jump();
             } else {
                 // wrong();
             }
-        };
+
+        }.bind(this);
 
         this.scoreText = this.game.add.text(10, 10, 'Score : ' + this.score, {
                 fontSize: '20px',
