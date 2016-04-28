@@ -27,7 +27,6 @@ TypingNinja.Game = function() {
     this.cliffRight = null;
     this.valley = null;
 
-    this.typingCursorPosition = 0;
     this.blockingKeys = false;
 
     this.gamePace = 5;
@@ -38,8 +37,8 @@ TypingNinja.Game = function() {
     this.activeBalloon = 0;
     this.balloonSpacing = 200;
     this.balloonStartPosition = {
-        x: 200,
-        y: 170
+        x: 300,
+        y: 100
     };
 
     this.playerBalloonOffset = {
@@ -53,7 +52,6 @@ TypingNinja.Game = function() {
     this.cameraMoveSmoothness = 0.05; 
 
     this.balloons = [];
-    this.firstBalloon = true;
 
     this.score = 0;
     this.bufferScore = 0;
@@ -140,13 +138,18 @@ TypingNinja.Game.prototype = {
         //     this.getBalloonPosition(this.activeBalloon).y, 
         //     'ninja');
 
-        var player = this.add.sprite(100, this.game.height - this.cache.getImage('ninja').height, 'ninja');
+        var playerStartPosition = {
+            x: 60,
+            y: this.game.height - this.cache.getImage('cliff-left').height
+        };
+
+        var player = this.add.sprite(playerStartPosition.x, playerStartPosition.y, 'ninja');
         player._state = { isOnPlatform: true };
 
         this.player = player;
 
-        player.scale.x = 0.9;
-        player.scale.y = 0.9;
+        player.scale.x = 1;
+        player.scale.y = 1;
         player.anchor.setTo(0.5, 0.1);
 
         this.cameraPos.setTo(player.x, player.y);
@@ -164,6 +167,9 @@ TypingNinja.Game.prototype = {
                 sprite.position.y = newPosition.y;
                 this.blockingKeys = false;
                 this.destroyBalloon(this.activeBalloon - 1);
+                this.player._state.isOnPlatform = false;
+                // this.unfocusCurrentBalloon();
+                this.focusNextBalloon();
             }, this);
 
         //  enable physics on the player
@@ -178,19 +184,17 @@ TypingNinja.Game.prototype = {
 
             var capturedKeyCode = keyboard.pressEvent.keyCode;
             var capturedChar = String.fromCharCode(capturedKeyCode);
-            var cursorPosition = this.typingCursorPosition;
-
             var delay = this.core.record_keydown_time(capturedChar);
             var is_valid = this.core.cur_char.keydown(capturedChar, delay);
 
-            if(this.core.is_done())
-                return this.core.submit_score();
+            if(this.core.is_done()) {
+                // return this.core.submit_score();
+            }
 
             if (is_valid) {
                 this.core.goto_next_char();
                 this.addScore(10);
                 this.blockingKeys = true;
-                this.typingCursorPosition++;
                 this.jump();
             } else {
                 // wrong();
@@ -206,36 +210,38 @@ TypingNinja.Game.prototype = {
         });
 
         this.scoreText.fixedToCamera = true;
+
+        this.focusNextBalloon(); // focus first balloon when game starts
     },
 
     update: function() {
         var player = this.player;
-
-        if (this.bufferScore < this.score) {
-            this.bufferScore++;
-            this.scoreText.text = 'Score : ' + this.bufferScore;
-        }
         
         this.cloudBig.tilePosition.x -= this.cloudSpeed;
 
-        var activeBalloon = this.getActiveBalloon();
-        
         if (!player._state.isOnPlatform) {
+            if (this.bufferScore < this.score) {
+                this.bufferScore++;
+                this.scoreText.text = 'Score : ' + this.bufferScore;
+            }
+
+            var activeBalloon = this.getActiveBalloon();
+
             player.body.position.y += this.dropSpeed;
             activeBalloon.body.position.y += this.dropSpeed;
+
+            if (this.game.height - player.body.position.y < this.game.height / 4) {
+                this.flashBalloon(activeBalloon);
+            }
+
+            this.moveCamera();
+
+            this.bgMountain.x = this.camera.x * 0.5;
+            this.valley.x = this.camera.x * 0.2;
+
+            this.cloudSmall.x = this.camera.x * 0.5;
+            this.cloudBig.x = this.camera.x * 0.3;
         }
-
-        if (this.game.height - player.body.position.y < this.game.height / 4) {
-            this.flashBalloon(activeBalloon);
-        }
-
-        this.moveCamera();
-
-        this.bgMountain.x = this.camera.x * 0.5;
-        this.valley.x = this.camera.x * 0.2;
-
-        this.cloudSmall.x = this.camera.x * 0.5;
-        this.cloudBig.x = this.camera.x * 0.3;
     },
 
     render: function() {
@@ -264,6 +270,10 @@ TypingNinja.Game.prototype = {
         return (this.activeBalloon == 0)? null: this.balloons[this.activeBalloon];
     },
 
+    getNextBalloon: function() {
+        return this.balloons[this.activeBalloon + 1];
+    },
+
     getBalloonPosition: function(balloonIndex) {
         return {
             x: this.balloons[balloonIndex].position.x + this.playerBalloonOffset.x,
@@ -283,7 +293,7 @@ TypingNinja.Game.prototype = {
         var balloon = this.add.sprite(positionXCoord, positionYCoord, this.pickBalloonStyle());
         this.balloons[position] = balloon;
         balloon.anchor.setTo(0.5, 0.5);
-        balloon.state = { flashing: false };
+        balloon._state = { flashing: false };
 
         this.addTextNodeToBalloon(balloon, character);
         this.physics.arcade.enable(balloon);        
@@ -308,8 +318,27 @@ TypingNinja.Game.prototype = {
         balloon.addChild(balloonText);
     },
 
+    focusNextBalloon: function(balloon) {
+        var balloon = this.getNextBalloon();
+
+        if (balloon._state.focused) {
+            return;
+        }
+
+        balloon.anchor.setTo(0.5, 0.5);
+
+        /*
+        var focusTween = this.add.tween(balloon.scale).to({
+            // alpha: [1, 0.5, 1],
+            x: [ 1, 1.1, 1.1, 1.1, 1.09, 1.08, 1], y: [1, 1.1, 1.1, 1.1, 1.09, 1.08, 1]
+        }, 1000, Phaser.Easing.Sinusoidal.InOut, true, 0, -1);
+        */
+
+        balloon._state.focused = true;
+    },
+
     flashBalloon: function(balloon) {
-        if (balloon.state.flashing) {
+        if (balloon._state.flashing) {
             return;
         }
     
@@ -319,10 +348,14 @@ TypingNinja.Game.prototype = {
             alpha: [1, 0.5]
         }, 300, Phaser.Easing.Linear.None, true, 0, -1);
 
-        balloon.state.flashing = true;
+        balloon._state.flashing = true;
     },
 
     destroyBalloon: function(position) {
+        if (this.player._state.isOnPlatform) {
+            return;
+        }
+
         var balloon = this.balloons[position];
         balloon.anchor.setTo(0.5, 0.5);
 
@@ -341,25 +374,19 @@ TypingNinja.Game.prototype = {
         var player = this.player;
         player.animations.play('jump', 30, false);
 
-        var nextPosition = this.getBalloonPosition(this.activeBalloon + 1);
-        
-        var nextBalloon = this.balloons[this.activeBalloon + 1];
+        var nextPosition = this.getBalloonPosition(this.activeBalloon + 1);        
+        var nextBalloon = this.getNextBalloon();
         var nextBalloonText = nextBalloon.children[0];
+
         this.add.tween(nextBalloonText).to({
             alpha: [1, 0]}, 200, Phaser.Easing.Linear.None, true
         ).onComplete.add(function() {
             // nextBalloonText.destroy();
         });
 
-        console.log(player.body.x, player.body.y);
-
         var activePosition = (player._state.isOnPlatform)? 
-                                    { x: player.body.x, y: player.body.y }: 
+                                    { x: player.body.x + 85, y: player.body.y }: 
                                     this.getBalloonPosition(this.activeBalloon);
-
-        if (player._state.isOnPlatform) {
-            player._state.isOnPlatform = false;
-        }
 
         var diffPosition = { x: nextPosition.x - activePosition.x, y: nextPosition.y - activePosition.y };
 
