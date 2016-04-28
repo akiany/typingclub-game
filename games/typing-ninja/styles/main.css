@@ -1,0 +1,22 @@
+@import url(http://fonts.googleapis.com/css?family=Droid%20Sans%20Mono);
+
+.game-normal {
+	padding: 0px;
+	width: 800px;
+	margin: 50px auto;
+}
+
+.game-fullscreen {
+	padding: 0px;
+	width: 100%;
+	margin: 0px;
+}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	background: linear-gradient(to bottom, #2985bb, #90d4d5);
+	/*background-color: #2985bb;*/
+
+	font-family: "Droid Sans Mono";
+}

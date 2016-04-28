@@ -9,22 +9,18 @@ function getWindowDimensions() {
 
 var TypingNinja = {
     STANDARD_DIMENSIONS: { x: 800, y: 600 },
-    DEV_MODE: true,
+    DEV_MODE: false,
     FULL_SCREEN: true,
 
     RANDOMIZE_BALLOONS: true,
-    RANDOMIZE_AMOUNT: 50,
-
-    // TYPE_MODE > options: 'next-balloon', 'current-balloon'
-    // TYPE_MODE: 'current-balloon',
-    TYPE_MODE: 'next-balloon',
+    RANDOMIZE_AMOUNT: 50
 };
 
 TypingNinja.Game = function() {
     // scene objects
     this.player = null;
     this.cloudSmall = null;
-    // this.cloudBig = null;
+    this.cloudBig = null;
     this.bgSky = null;
     this.bgMountain = null;
     this.cliffLeft = null;
@@ -39,7 +35,7 @@ TypingNinja.Game = function() {
     this.dropSpeed = null;
     this.cloudSpeed = 0.1;
 
-    this.activeBalloon = 1;
+    this.activeBalloon = 0;
     this.balloonSpacing = 200;
     this.balloonStartPosition = {
         x: 200,
@@ -139,10 +135,13 @@ TypingNinja.Game.prototype = {
             this.createBalloon(i+1, env.text[i]);
         }
 
-        var player = this.add.sprite(
-            this.getBalloonPosition(this.activeBalloon).x, 
-            this.getBalloonPosition(this.activeBalloon).y, 
-            'ninja');
+        // var player = this.add.sprite(
+        //     this.getBalloonPosition(this.activeBalloon).x, 
+        //     this.getBalloonPosition(this.activeBalloon).y, 
+        //     'ninja');
+
+        var player = this.add.sprite(100, this.game.height - this.cache.getImage('ninja').height, 'ninja');
+        player._state = { isOnPlatform: true };
 
         this.player = player;
 
@@ -179,12 +178,7 @@ TypingNinja.Game.prototype = {
 
             var capturedKeyCode = keyboard.pressEvent.keyCode;
             var capturedChar = String.fromCharCode(capturedKeyCode);
-            
-            var cursorPosition = (TypingNinja.TYPE_MODE == 'next-balloon')? 
-                                        this.typingCursorPosition + 1: 
-                                        this.typingCursorPosition;
-
-            // var expectedChar = env.text.charAt(cursorPosition);
+            var cursorPosition = this.typingCursorPosition;
 
             var delay = this.core.record_keydown_time(capturedChar);
             var is_valid = this.core.cur_char.keydown(capturedChar, delay);
@@ -217,10 +211,6 @@ TypingNinja.Game.prototype = {
     update: function() {
         var player = this.player;
 
-        if (!this.player.inWorld) {
-
-        }
-
         if (this.bufferScore < this.score) {
             this.bufferScore++;
             this.scoreText.text = 'Score : ' + this.bufferScore;
@@ -228,12 +218,14 @@ TypingNinja.Game.prototype = {
         
         this.cloudBig.tilePosition.x -= this.cloudSpeed;
 
-        player.body.position.y += this.dropSpeed;
-        
         var activeBalloon = this.getActiveBalloon();
-        activeBalloon.body.position.y += this.dropSpeed;
+        
+        if (!player._state.isOnPlatform) {
+            player.body.position.y += this.dropSpeed;
+            activeBalloon.body.position.y += this.dropSpeed;
+        }
 
-        if (this.game.height - player.body.position.y < this.game.height / 2) {
+        if (this.game.height - player.body.position.y < this.game.height / 4) {
             this.flashBalloon(activeBalloon);
         }
 
@@ -269,7 +261,7 @@ TypingNinja.Game.prototype = {
     },
 
     getActiveBalloon: function() {
-        return this.balloons[this.activeBalloon];
+        return (this.activeBalloon == 0)? null: this.balloons[this.activeBalloon];
     },
 
     getBalloonPosition: function(balloonIndex) {
@@ -293,16 +285,7 @@ TypingNinja.Game.prototype = {
         balloon.anchor.setTo(0.5, 0.5);
         balloon.state = { flashing: false };
 
-        if (TypingNinja.TYPE_MODE == 'next-balloon') {
-            if (!this.firstBalloon) {
-                this.addTextNodeToBalloon(balloon, character);
-            } else {
-                this.firstBalloon = false;
-            }
-        } else {
-            this.addTextNodeToBalloon(balloon, character);
-        }
-
+        this.addTextNodeToBalloon(balloon, character);
         this.physics.arcade.enable(balloon);        
     },
 
@@ -311,7 +294,7 @@ TypingNinja.Game.prototype = {
             0, -30,
             character,
             {
-                font: "50px Arial",
+                font: "50px Droid Sans Mono",
                 fill: "#fff",
                 stroke: "#555",
                 strokeThickness: 1,
@@ -334,7 +317,7 @@ TypingNinja.Game.prototype = {
 
         var tween = this.add.tween(balloon).to({
             alpha: [1, 0.5]
-        }, 200, Phaser.Easing.Linear.None, true, 0, -1);
+        }, 300, Phaser.Easing.Linear.None, true, 0, -1);
 
         balloon.state.flashing = true;
     },
@@ -360,17 +343,24 @@ TypingNinja.Game.prototype = {
 
         var nextPosition = this.getBalloonPosition(this.activeBalloon + 1);
         
-        if (TypingNinja.TYPE_MODE == 'next-balloon') {
-            var nextBalloon = this.balloons[this.activeBalloon + 1];
-            var nextBalloonText = nextBalloon.children[0];
-            this.add.tween(nextBalloonText).to({
-                alpha: [1, 0]}, 200, Phaser.Easing.Linear.None, true
-            ).onComplete.add(function() {
-                nextBalloonText.destroy();
-            });
+        var nextBalloon = this.balloons[this.activeBalloon + 1];
+        var nextBalloonText = nextBalloon.children[0];
+        this.add.tween(nextBalloonText).to({
+            alpha: [1, 0]}, 200, Phaser.Easing.Linear.None, true
+        ).onComplete.add(function() {
+            // nextBalloonText.destroy();
+        });
+
+        console.log(player.body.x, player.body.y);
+
+        var activePosition = (player._state.isOnPlatform)? 
+                                    { x: player.body.x, y: player.body.y }: 
+                                    this.getBalloonPosition(this.activeBalloon);
+
+        if (player._state.isOnPlatform) {
+            player._state.isOnPlatform = false;
         }
 
-        var activePosition = this.getBalloonPosition(this.activeBalloon);
         var diffPosition = { x: nextPosition.x - activePosition.x, y: nextPosition.y - activePosition.y };
 
         this.add.tween(player).to({
