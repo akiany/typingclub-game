@@ -148,7 +148,7 @@ TypingNinja.Game.prototype = {
         };
 
         var player = this.add.sprite(playerStartPosition.x, playerStartPosition.y, 'ninja');
-        player._state = { isOnPlatform: true };
+        player._state = { isOnStartPlatform: true, isOnEndPlatform: false, isJumping: false };
 
         this.player = player;
 
@@ -159,6 +159,8 @@ TypingNinja.Game.prototype = {
         this.cameraPos.setTo(player.x, player.y);
 
         jumpAnimation = this.player.animations.add('jump', [0, 1, 2, 3, 3, 2, 1, 0], 30, true);
+        jumpOffAnimation = this.player.animations.add('jump-off', [0, 1, 2, 3, 3, 5], 30, true);
+
         // wrongAnimation = this.player.animations.add('wrong', [0, 1, 2, 3, 3, 2, 1, 0], 30, true);
 
         jumpAnimation.onComplete.add(
@@ -171,8 +173,23 @@ TypingNinja.Game.prototype = {
                 sprite.position.y = newPosition.y;
                 this.blockingKeys = false;
                 this.destroyBalloon(this.activeBalloon - 1);
-                this.player._state.isOnPlatform = false;
+                this.player._state.isJumping = false;
+                this.player._state.isOnStartPlatform = false;
                 // this.focusNextBalloon();
+
+                if (this.onLastBalloon()) {
+                    var that = this;
+                    setTimeout(function() { that.jumpOff(); }, 100);
+                }
+            }, this);
+
+        jumpOffAnimation.onComplete.add(
+            function(sprite, animation) {
+                this.player._state.isJumping = false;
+                this.player._state.isOnEndPlatform = true;
+                this.destroyBalloon(this.activeBalloon);
+                sprite.frame = 5;
+                this.submitScores();
             }, this);
 
         //  enable physics on the player
@@ -181,28 +198,25 @@ TypingNinja.Game.prototype = {
 
         var keyboard = this.input.keyboard;
         keyboard.onPressCallback = function() {
-            if (this.blockingKeys) {
+            if (this.blockingKeys || this.player._state.isOnEndPlatform || this.player._state.isJumping) {
                 return;
             }
 
             var capturedKeyCode = keyboard.pressEvent.keyCode;
             var capturedChar = String.fromCharCode(capturedKeyCode);
             var delay = this.core.record_keydown_time(capturedChar);
-            var is_valid = this.core.cur_char.keydown(capturedChar, delay);
+            if (this.core.cur_char) {
+                var is_valid = this.core.cur_char.keydown(capturedChar, delay);
 
-            if(this.core.is_done()) {
-                // return this.core.submit_score();
+                if (is_valid) {
+                    this.core.goto_next_char();
+                    this.addScore(10);
+                    this.blockingKeys = true;
+                    this.jump();
+                } else {
+                    this.wrong();
+                }    
             }
-
-            if (is_valid) {
-                this.core.goto_next_char();
-                this.addScore(10);
-                this.blockingKeys = true;
-                this.jump();
-            } else {
-                // wrong();
-            }
-
         }.bind(this);
 
         this.scoreText = this.game.add.text(10, 10, 'Score : ' + this.score, {
@@ -213,10 +227,14 @@ TypingNinja.Game.prototype = {
         });
 
         this.scoreText.fixedToCamera = true;
-
         this.player.frame = 5; // set initial player pose to standing pose (frame 5)
-
         //this.focusNextBalloon(); // focus first balloon when game starts
+    },
+
+    submitScores: function() {
+        if(this.core.is_done()) {
+            return this.core.submit_score();
+        }
     },
 
     update: function() {
@@ -224,17 +242,19 @@ TypingNinja.Game.prototype = {
         
         this.cloudBig.tilePosition.x -= this.cloudSpeed;
 
-        if (!player._state.isOnPlatform) {
+        if (!player._state.isOnStartPlatform && !player._state.isOnEndPlatform) {
             if (this.bufferScore < this.score) {
                 this.bufferScore++;
                 this.scoreText.text = 'Score : ' + this.bufferScore;
             }
 
+            if (!player._state.isJumping && !player._state.isOnEndPlatform) {
+                player.body.position.y += this.dropSpeed;
+            }
+
             var activeBalloon = this.getActiveBalloon();
-
-            player.body.position.y += this.dropSpeed;
             activeBalloon.body.position.y += this.dropSpeed;
-
+            
             if (this.game.height - player.body.position.y < this.game.height / 4) {
                 this.flashBalloon(activeBalloon);
             }
@@ -291,7 +311,7 @@ TypingNinja.Game.prototype = {
     },
 
     onLastBalloon: function() {
-        return (this.activeBalloon + 1 >= env.text.length);
+        return (this.activeBalloon + 1 > env.text.length);
     },
 
     createBalloon: function(position, character) {
@@ -333,21 +353,6 @@ TypingNinja.Game.prototype = {
 
     focusNextBalloon: function(balloon) {
         var balloon = this.getNextBalloon();
-
-        if (!balloon || balloon._state.focused) {
-            return;
-        }
-
-        balloon.anchor.setTo(0.5, 0.5);
-
-        
-        var focusTween = this.add.tween(balloon.scale).to({
-            // alpha: [1, 0.5, 1],
-            x: [ 1, 1.1, 1.1, 1.1, 1.09, 1.08, 1], y: [1, 1.1, 1.1, 1.1, 1.09, 1.08, 1]
-        }, 1000, Phaser.Easing.Sinusoidal.InOut, true, 0, -1);
-        
-
-        balloon._state.focused = true;
     },
 
     flashBalloon: function(balloon) {
@@ -364,8 +369,25 @@ TypingNinja.Game.prototype = {
         balloon._state.flashing = true;
     },
 
+    jerkBalloonAndPlayer: function(balloon) {
+        if (balloon) {
+            balloon.anchor.setTo(0.5, 0.5);
+
+            var balloonTween = this.add.tween(balloon.scale).to({
+                x: [1, 1.2, 1],
+                y: [1, 1.2, 1]
+            }, 150, Phaser.Easing.Linear.None, true);
+
+            var player = this.player;
+            var playerTween = this.add.tween(player.scale).to({
+                x: [1, 1.2, 1],
+                y: [1, 1.2, 1]
+            }, 150, Phaser.Easing.Linear.None, true);
+        }   
+    },
+
     destroyBalloon: function(position) {
-        if (this.player._state.isOnPlatform) {
+        if (this.player._state.isOnStartPlatform) {
             return;
         }
 
@@ -385,6 +407,7 @@ TypingNinja.Game.prototype = {
 
     jump: function() {
         var player = this.player;
+        this.player._state.isJumping = true;
         player.animations.play('jump', 30, false);
 
         var nextPosition = this.getBalloonPosition(this.activeBalloon + 1);        
@@ -397,7 +420,7 @@ TypingNinja.Game.prototype = {
             // nextBalloonText.destroy();
         });
 
-        var activePosition = (player._state.isOnPlatform)? 
+        var activePosition = (player._state.isOnStartPlatform)? 
                                     { x: player.body.x + 85, y: player.body.y }: 
                                     this.getBalloonPosition(this.activeBalloon);
 
@@ -406,27 +429,24 @@ TypingNinja.Game.prototype = {
         this.add.tween(player).to({
             x: [
                 activePosition.x,
-                activePosition.x + diffPosition.x / 4,
                 activePosition.x + diffPosition.x / 2,
                 nextPosition.x
             ],
 
             y: [
                 activePosition.y, 
-                nextPosition.y - 40,
-                nextPosition.y - 50,
+                100,
                 nextPosition.y
             ]
-        }, 150, Phaser.Easing.Linear.None, true);
+        }, 150, Phaser.Easing.Quadratic.Out, true).interpolation(function(v, k) {
+            return Phaser.Math.bezierInterpolation(v, k);
+        });
     },
 
-    // wrong: function() {
-    //     player.animations.play('wrong', 15, false);
-    // },
-
-    jumpToEndPlatform: function() {
+    jumpOff: function() {
         var player = this.player;
-        player.animations.play('jump', 30, false);
+        this.player._state.isJumping = true;
+        player.animations.play('jump-off', 30, false);
 
         var nextPosition = this.getEndPlatformPosition();
         var activePosition = {x: this.player.body.position.x, y: this.player.body.position.y };
@@ -435,27 +455,30 @@ TypingNinja.Game.prototype = {
         this.add.tween(player).to({
             x: [
                 activePosition.x,
-                activePosition.x + diffPosition.x / 4,
                 activePosition.x + diffPosition.x / 2,
                 nextPosition.x
             ],
 
             y: [
                 activePosition.y, 
-                nextPosition.y - 80,
-                nextPosition.y - 30,
+                50,
                 nextPosition.y
             ]
-        }, 150, Phaser.Easing.Linear.None, true);
+        }, 200, Phaser.Easing.Quadratic.Out, true).interpolation(function(v, k) {
+            return Phaser.Math.bezierInterpolation(v, k);
+        });
+    },
+
+    wrong: function() {
+        this.jerkBalloonAndPlayer(this.getActiveBalloon());
     },
 
     getEndPlatformPosition: function() {
         return { 
-            x: this.gameWidth - 200, 
-            y: this.game.height - this.cache.getImage('cliff-right').height 
+            x: this.gameWidth - 200,
+            y: this.game.height - this.cache.getImage('cliff-right').height + 100
         };
     },
-    
 
     moveCamera: function() {
         this.cameraPos.x += (this.player.x - this.cameraPos.x + this.cameraCenterXOffset) * this.cameraMoveSmoothness;
