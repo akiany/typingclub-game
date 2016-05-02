@@ -149,6 +149,8 @@ TypingNinja.Game.prototype = {
 
         var player = this.add.sprite(playerStartPosition.x, playerStartPosition.y, 'ninja');
         player._state = { isOnStartPlatform: true, isOnEndPlatform: false, isJumping: false };
+        player.checkWorldBounds = true;
+        player.events.onOutOfBounds.add(this.playerOut, this);
 
         this.player = player;
 
@@ -179,7 +181,7 @@ TypingNinja.Game.prototype = {
 
                 if (this.onLastBalloon()) {
                     var that = this;
-                    setTimeout(function() { that.jumpOff(); }, 100);
+                    setTimeout(function() { that.jumpOff(); }, 300);
                 }
             }, this);
 
@@ -229,6 +231,12 @@ TypingNinja.Game.prototype = {
         this.scoreText.fixedToCamera = true;
         this.player.frame = 5; // set initial player pose to standing pose (frame 5)
         //this.focusNextBalloon(); // focus first balloon when game starts
+    },
+
+    playerOut: function() {
+        console.log("Player out of bounds");
+
+        
     },
 
     submitScores: function() {
