@@ -29,7 +29,7 @@ TypingNinja.Game = function() {
 
     this.blockingKeys = false;
 
-    this.gamePace = 5;
+    this.gamePace = 10;
     this.gameWidth = null;
     this.dropSpeed = null;
     this.cloudSpeed = 0.1;
@@ -435,7 +435,7 @@ TypingNinja.Game.prototype = {
 
             y: [
                 activePosition.y, 
-                100,
+                100 + diffPosition.y / 2,
                 nextPosition.y
             ]
         }, 150, Phaser.Easing.Quadratic.Out, true).interpolation(function(v, k) {
