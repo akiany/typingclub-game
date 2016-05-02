@@ -47,6 +47,7 @@ TypingNinja.Game = function() {
     };
 
     this.cameraPos =  new Phaser.Point(0, 0);
+    this.cameraCenterXOffset = 200;
 
     // smooth movement of camera - change this value to alter the amount of damping, lower values = smoother camera movement
     this.cameraMoveSmoothness = 0.05; 
@@ -80,7 +81,10 @@ TypingNinja.Game.prototype = {
         this.load.image('valley', 'assets/valley.png');
         this.load.image('bg-mountain', 'assets/bg_mountain.png');
         
-        this.load.spritesheet('ninja', 'assets/Ninja_sprite_03_sized.png', 170, 170, 10);
+        // ninja
+        this.load.spritesheet('ninja', 'assets/ninja.png', 170, 170, 15);
+
+        // balloons
         this.load.spritesheet('balloon-yellow', 'assets/simple_balloon_yellow.png', 103, 174, 1);
         this.load.spritesheet('balloon-red', 'assets/simple_balloon_red.png', 103, 174, 1);
         this.load.spritesheet('balloon-purple', 'assets/simple_balloon_purple.png', 103, 174, 1);
@@ -154,12 +158,12 @@ TypingNinja.Game.prototype = {
 
         this.cameraPos.setTo(player.x, player.y);
 
-        jumpAnimation = this.player.animations.add('jump', [0, 1, 3, 5, 5, 3, 1, 0], 30, true);
-        // wrongAnimation = this.player.animations.add('wrong', [0, 3, 0, 3, 0], 30, true);
+        jumpAnimation = this.player.animations.add('jump', [0, 1, 2, 3, 3, 2, 1, 0], 30, true);
+        // wrongAnimation = this.player.animations.add('wrong', [0, 1, 2, 3, 3, 2, 1, 0], 30, true);
 
         jumpAnimation.onComplete.add(
             function(sprite, animation) {
-                sprite.animations.stop(); 
+                sprite.animations.stop();
                 sprite.frame = 0;
                 this.activeBalloon++;
                 var newPosition = this.getBalloonPosition(this.activeBalloon);
@@ -168,7 +172,6 @@ TypingNinja.Game.prototype = {
                 this.blockingKeys = false;
                 this.destroyBalloon(this.activeBalloon - 1);
                 this.player._state.isOnPlatform = false;
-                // this.unfocusCurrentBalloon();
                 this.focusNextBalloon();
             }, this);
 
@@ -210,6 +213,8 @@ TypingNinja.Game.prototype = {
         });
 
         this.scoreText.fixedToCamera = true;
+
+        this.player.frame = 5;
 
         this.focusNextBalloon(); // focus first balloon when game starts
     },
@@ -271,7 +276,11 @@ TypingNinja.Game.prototype = {
     },
 
     getNextBalloon: function() {
-        return this.balloons[this.activeBalloon + 1];
+        if (this.activeBalloon + 1 > env.text.length) {
+            return null;
+        } else {
+            return this.balloons[this.activeBalloon + 1];    
+        }
     },
 
     getBalloonPosition: function(balloonIndex) {
@@ -279,6 +288,10 @@ TypingNinja.Game.prototype = {
             x: this.balloons[balloonIndex].position.x + this.playerBalloonOffset.x,
             y: this.balloons[balloonIndex].position.y + this.playerBalloonOffset.y
         }
+    },
+
+    onLastBalloon: function() {
+        return (this.activeBalloon + 1 >= env.text.length);
     },
 
     createBalloon: function(position, character) {
@@ -321,7 +334,7 @@ TypingNinja.Game.prototype = {
     focusNextBalloon: function(balloon) {
         var balloon = this.getNextBalloon();
 
-        if (balloon._state.focused) {
+        if (!balloon || balloon._state.focused) {
             return;
         }
 
@@ -410,11 +423,43 @@ TypingNinja.Game.prototype = {
     // wrong: function() {
     //     player.animations.play('wrong', 15, false);
     // },
+
+    jumpToEndPlatform: function() {
+        var player = this.player;
+        player.animations.play('jump', 30, false);
+
+        var nextPosition = this.getEndPlatformPosition();
+        var activePosition = {x: this.player.body.position.x, y: this.player.body.position.y };
+        var diffPosition = { x: nextPosition.x - activePosition.x, y: nextPosition.y - activePosition.y };
+
+        this.add.tween(player).to({
+            x: [
+                activePosition.x,
+                activePosition.x + diffPosition.x / 4,
+                activePosition.x + diffPosition.x / 2,
+                nextPosition.x
+            ],
+
+            y: [
+                activePosition.y, 
+                nextPosition.y - 80,
+                nextPosition.y - 30,
+                nextPosition.y
+            ]
+        }, 150, Phaser.Easing.Linear.None, true);
+    },
+
+    getEndPlatformPosition: function() {
+        return { 
+            x: this.gameWidth - 200, 
+            y: this.game.height - this.cache.getImage('cliff-right').height 
+        };
+    },
     
 
     moveCamera: function() {
-        this.cameraPos.x += (this.player.x - this.cameraPos.x) * this.cameraMoveSmoothness;
-        this.cameraPos.y += (this.player.y - this.cameraPos.y) * this.cameraMoveSmoothness;
+        this.cameraPos.x += (this.player.x - this.cameraPos.x + this.cameraCenterXOffset) * this.cameraMoveSmoothness;
+        // this.cameraPos.y += (this.player.y - this.cameraPos.y) * this.cameraMoveSmoothness;
         this.camera.focusOnXY(this.cameraPos.x, this.cameraPos.y);
     }
 };
