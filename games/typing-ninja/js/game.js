@@ -172,7 +172,7 @@ TypingNinja.Game.prototype = {
                 this.blockingKeys = false;
                 this.destroyBalloon(this.activeBalloon - 1);
                 this.player._state.isOnPlatform = false;
-                this.focusNextBalloon();
+                // this.focusNextBalloon();
             }, this);
 
         //  enable physics on the player
@@ -214,9 +214,9 @@ TypingNinja.Game.prototype = {
 
         this.scoreText.fixedToCamera = true;
 
-        this.player.frame = 5;
+        this.player.frame = 5; // set initial player pose to standing pose (frame 5)
 
-        this.focusNextBalloon(); // focus first balloon when game starts
+        //this.focusNextBalloon(); // focus first balloon when game starts
     },
 
     update: function() {
@@ -340,12 +340,12 @@ TypingNinja.Game.prototype = {
 
         balloon.anchor.setTo(0.5, 0.5);
 
-        /*
+        
         var focusTween = this.add.tween(balloon.scale).to({
             // alpha: [1, 0.5, 1],
             x: [ 1, 1.1, 1.1, 1.1, 1.09, 1.08, 1], y: [1, 1.1, 1.1, 1.1, 1.09, 1.08, 1]
         }, 1000, Phaser.Easing.Sinusoidal.InOut, true, 0, -1);
-        */
+        
 
         balloon._state.focused = true;
     },
