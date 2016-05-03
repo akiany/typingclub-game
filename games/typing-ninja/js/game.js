@@ -33,7 +33,8 @@ TypingNinja.Game = function() {
 
     this.blockingKeys = false;
 
-    this.gamePace = 5;
+    this.gamePace = 10;
+    this.realGamePace = null; // normalized game pace
     this.gameWidth = null;
     this.dropSpeed = null;
     this.cloudSpeed = 0.1;
@@ -74,9 +75,13 @@ TypingNinja.Game = function() {
 TypingNinja.Game.prototype = {
     init: function() {
         this.gameWidth = ((env.text.length + 1) * this.balloonSpacing) + this.balloonStartPosition.x;
-        this.dropSpeed = 0.3 * this.gamePace;
 
-        // this.scale.scaleMode = Phaser.ScaleManager.RESIZE;
+        // realGamePace is the normalization of set gamePace to account for different game heights (based on screen size)
+        this.realGamePace = this.gamePace * this.game.height / 600;
+        this.dropSpeed = 0.3 * this.realGamePace;
+
+        // this.game.scale.scaleMode = Phaser.ScaleManager.RESIZE;
+        // this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
     },
 
     preload: function() {
@@ -117,6 +122,7 @@ TypingNinja.Game.prototype = {
         this.bgSky = this.add.tileSprite(0, 0, this.game.width, this.game.height, 'bg-sky');
         this.bgSky.fixedToCamera = true;
 
+        
         if (TypingNinja.FULL_SCREEN) {
             var scale = Math.max(this.game.height / TypingNinja.STANDARD_DIMENSIONS.y, 1);
             this.bgSky.scale.y = scale;
@@ -269,8 +275,8 @@ TypingNinja.Game.prototype = {
 
         if (this.gameState.lost) {
             var activeBalloon = this.getActiveBalloon();
-            player.body.position.y -= this.dropSpeed * 40;
-            activeBalloon.body.position.y -= this.dropSpeed * 40;
+            player.body.position.y -= this.dropSpeed * 50;
+            activeBalloon.body.position.y -= this.dropSpeed * 50;
         }
 
         if (!player._state.isOnStartPlatform && !player._state.isOnEndPlatform) {
