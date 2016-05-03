@@ -27,9 +27,13 @@ TypingNinja.Game = function() {
     this.cliffRight = null;
     this.valley = null;
 
+    this.gameState = {
+        lost: false
+    };
+
     this.blockingKeys = false;
 
-    this.gamePace = 10;
+    this.gamePace = 5;
     this.gameWidth = null;
     this.dropSpeed = null;
     this.cloudSpeed = 0.1;
@@ -46,6 +50,11 @@ TypingNinja.Game = function() {
         y: 78
     };
 
+    this.balloonGlowOffset = {
+        x: 0,
+        y: -35
+    };
+
     this.cameraPos =  new Phaser.Point(0, 0);
     this.cameraCenterXOffset = 200;
 
@@ -53,6 +62,7 @@ TypingNinja.Game = function() {
     this.cameraMoveSmoothness = 0.05; 
 
     this.balloons = [];
+    this.balloonGlow = { glow: null, ray: null };
 
     this.score = 0;
     this.bufferScore = 0;
@@ -90,6 +100,10 @@ TypingNinja.Game.prototype = {
         this.load.spritesheet('balloon-purple', 'assets/simple_balloon_purple.png', 103, 174, 1);
         this.load.spritesheet('balloon-blue', 'assets/simple_balloon_blue.png', 103, 174, 1);
         // this.load.spritesheet('balloon-dark', 'assets/simple_balloon_dark.png', 103, 174, 1);
+
+        this.load.spritesheet('balloon-glow', 'assets/balloon_glow.png', 149, 149, 1);
+        this.load.spritesheet('balloon-ray-1', 'assets/balloon_ray_1.png', 149, 149, 1);
+        this.load.spritesheet('balloon-ray-2', 'assets/balloon_ray_2.png', 149, 149, 1);
     },
 
     create: function() {
@@ -137,6 +151,8 @@ TypingNinja.Game.prototype = {
             this.createBalloon(i+1, env.text[i]);
         }
 
+        this.createBalloonGlow(this.balloons[1]);
+
         // var player = this.add.sprite(
         //     this.getBalloonPosition(this.activeBalloon).x, 
         //     this.getBalloonPosition(this.activeBalloon).y, 
@@ -177,9 +193,10 @@ TypingNinja.Game.prototype = {
                 this.destroyBalloon(this.activeBalloon - 1);
                 this.player._state.isJumping = false;
                 this.player._state.isOnStartPlatform = false;
-                // this.focusNextBalloon();
+                this.focusNextBalloon();
 
                 if (this.onLastBalloon()) {
+                    this.destroyGlow();
                     var that = this;
                     setTimeout(function() { that.jumpOff(); }, 300);
                 }
@@ -200,7 +217,7 @@ TypingNinja.Game.prototype = {
 
         var keyboard = this.input.keyboard;
         keyboard.onPressCallback = function() {
-            if (this.blockingKeys || this.player._state.isOnEndPlatform || this.player._state.isJumping) {
+            if (this.blockingKeys || this.player._state.isOnEndPlatform) {
                 return;
             }
 
@@ -229,14 +246,12 @@ TypingNinja.Game.prototype = {
         });
 
         this.scoreText.fixedToCamera = true;
-        this.player.frame = 5; // set initial player pose to standing pose (frame 5)
-        //this.focusNextBalloon(); // focus first balloon when game starts
+        this.player.frame = 4; // set initial player pose to standing pose (frame 5)
+        this.focusNextBalloon(); // focus first balloon when game starts
     },
 
     playerOut: function() {
-        console.log("Player out of bounds");
-
-        
+        this.gameState.lost = true;
     },
 
     submitScores: function() {
@@ -249,6 +264,14 @@ TypingNinja.Game.prototype = {
         var player = this.player;
         
         this.cloudBig.tilePosition.x -= this.cloudSpeed;
+
+        this.balloonGlow.ray.angle -= 0.5;
+
+        if (this.gameState.lost) {
+            var activeBalloon = this.getActiveBalloon();
+            player.body.position.y -= this.dropSpeed * 40;
+            activeBalloon.body.position.y -= this.dropSpeed * 40;
+        }
 
         if (!player._state.isOnStartPlatform && !player._state.isOnEndPlatform) {
             if (this.bufferScore < this.score) {
@@ -322,16 +345,57 @@ TypingNinja.Game.prototype = {
         return (this.activeBalloon + 1 > env.text.length);
     },
 
-    createBalloon: function(position, character) {
-        // var positionXCoord = this.balloonStartPosition.x + ((position - 1) * this.balloonSpacing + 
-        //                         ((TypingNinja.RANDOMIZE_BALLOONS)? Math.random() * TypingNinja.RANDOMIZE_AMOUNT: 0));
+    createBalloonGlow: function(balloon) {
+        var balloonGlow = this.add.sprite(
+            balloon.position.x + this.balloonGlowOffset.x,
+            balloon.position.y + this.balloonGlowOffset.y, 'balloon-glow');
+        balloonGlow.anchor.setTo(0.5, 0.5);
+        balloonGlow.alpha = 0.5;
+
+        var balloonRay = this.add.sprite(
+            balloon.position.x + this.balloonGlowOffset.x,
+            balloon.position.y + this.balloonGlowOffset.y, 'balloon-ray-1');
+        balloonRay.anchor.setTo(0.5, 0.5);
+        balloonRay.alpha = 0.5;
+
+        this.balloonGlow.glow = balloonGlow;
+        this.balloonGlow.ray = balloonRay;
+
+        balloon.bringToTop();
+    },
+
+    destroyGlow: function() {
+        this.balloonGlow.glow.destroy();
+        this.balloonGlow.ray.destroy();
+    },
+
+    repositionBalloonGlow: function(balloon) {
+        this.balloonGlow.glow.position.x = balloon.position.x + this.balloonGlowOffset.x;
+        this.balloonGlow.glow.position.y = balloon.position.y + this.balloonGlowOffset.y;
+
+        this.balloonGlow.ray.position.x = balloon.position.x + this.balloonGlowOffset.x;
+        this.balloonGlow.ray.position.y = balloon.position.y + this.balloonGlowOffset.y;
+        balloon.bringToTop();
+    },
+
+    calculateBalloonCoordinates: function(position) {
+        /*
+        var positionXCoord = this.balloonStartPosition.x + ((position - 1) * this.balloonSpacing + 
+                                ((TypingNinja.RANDOMIZE_BALLOONS)? Math.random() * TypingNinja.RANDOMIZE_AMOUNT: 0));
+        */
 
         var positionXCoord = this.balloonStartPosition.x + ((position - 1) * this.balloonSpacing);
 
         var positionYCoord = this.balloonStartPosition.y + 
                                 ((TypingNinja.RANDOMIZE_BALLOONS)? Math.random() * TypingNinja.RANDOMIZE_AMOUNT: 0);
 
-        var balloon = this.add.sprite(positionXCoord, positionYCoord, this.pickBalloonStyle());
+        return { x: positionXCoord, y: positionYCoord };
+    },
+
+    createBalloon: function(position, character) {
+        var balloonCoordinates = this.calculateBalloonCoordinates(position);
+
+        var balloon = this.add.sprite(balloonCoordinates.x, balloonCoordinates.y, this.pickBalloonStyle());
         this.balloons[position] = balloon;
         balloon.anchor.setTo(0.5, 0.5);
         balloon._state = { flashing: false };
@@ -361,6 +425,10 @@ TypingNinja.Game.prototype = {
 
     focusNextBalloon: function(balloon) {
         var balloon = this.getNextBalloon();
+
+        if (balloon) {
+            this.repositionBalloonGlow(balloon);
+        }
     },
 
     flashBalloon: function(balloon) {
