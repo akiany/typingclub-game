@@ -69,6 +69,10 @@ TypingNinja.Game = function() {
     this.bufferScore = 0;
     this.scoreText = null;
 
+    this.soundEffects = {
+        jump: null
+    };
+
     this.core = new TypingCore(env);
 };
 
@@ -109,6 +113,8 @@ TypingNinja.Game.prototype = {
         this.load.spritesheet('balloon-glow', 'assets/balloon_glow.png', 149, 149, 1);
         this.load.spritesheet('balloon-ray-1', 'assets/balloon_ray_1.png', 149, 149, 1);
         this.load.spritesheet('balloon-ray-2', 'assets/balloon_ray_2.png', 149, 149, 1);
+
+        this.load.audio('jump', 'assets/audio/jump.wav');
     },
 
     create: function() {
@@ -254,6 +260,8 @@ TypingNinja.Game.prototype = {
         this.scoreText.fixedToCamera = true;
         this.player.frame = 4; // set initial player pose to standing pose (frame 5)
         this.focusNextBalloon(); // focus first balloon when game starts
+
+        this.soundEffects.jump = this.game.add.audio('jump');
     },
 
     playerOut: function() {
@@ -284,7 +292,7 @@ TypingNinja.Game.prototype = {
                 this.bufferScore++;
                 this.scoreText.text = 'Score : ' + this.bufferScore;
             }
-
+            
             if (!player._state.isJumping && !player._state.isOnEndPlatform) {
                 player.body.position.y += this.dropSpeed;
             }
@@ -492,6 +500,8 @@ TypingNinja.Game.prototype = {
         this.player._state.isJumping = true;
         player.animations.play('jump', 30, false);
 
+        this.soundEffects.jump.play();
+
         var nextPosition = this.getBalloonPosition(this.activeBalloon + 1);        
         var nextBalloon = this.getNextBalloon();
         var nextBalloonText = nextBalloon.children[0];
@@ -529,6 +539,8 @@ TypingNinja.Game.prototype = {
         var player = this.player;
         this.player._state.isJumping = true;
         player.animations.play('jump-off', 30, false);
+
+        // this.soundEffects.jump.play();
 
         var nextPosition = this.getEndPlatformPosition();
         var activePosition = {x: this.player.body.position.x, y: this.player.body.position.y };
