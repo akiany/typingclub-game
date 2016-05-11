@@ -18,3 +18,11 @@ Todo:
 
 # to start a web server using python
 python -m SimpleHTTPServer 8008
+
+
+----
+
+- For now. When you finish or lose, it ends the lesson and submits score
+- The score is calculated by % progress X max-score
+- The number of stars is calculated by % progress X stars
+- Starting text says: Type letters on the baloon to begin

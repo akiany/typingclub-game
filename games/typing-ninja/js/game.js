@@ -13,7 +13,12 @@ var TypingNinja = {
     FULL_SCREEN: true,
 
     RANDOMIZE_BALLOONS: true,
-    RANDOMIZE_AMOUNT: 50
+    RANDOMIZE_AMOUNT: 50,
+
+    PLAY_SFX: false,
+    PLAY_MUSIC: false,
+
+    DISPLAY_SCORE: false
 };
 
 TypingNinja.Game = function() {
@@ -69,6 +74,10 @@ TypingNinja.Game = function() {
     this.bufferScore = 0;
     this.scoreText = null;
 
+    this.startingText = null;
+    this.gameOverText = null;
+    this.youWinText = null;
+
     this.soundEffects = {
         jump: null
     };
@@ -114,7 +123,9 @@ TypingNinja.Game.prototype = {
         this.load.spritesheet('balloon-ray-1', 'assets/balloon_ray_1.png', 149, 149, 1);
         this.load.spritesheet('balloon-ray-2', 'assets/balloon_ray_2.png', 149, 149, 1);
 
-        this.load.audio('jump', 'assets/audio/jump.wav');
+        if (TypingNinja.PLAY_SFX) {
+            this.load.audio('jump', 'assets/audio/jump.wav');    
+        }
     },
 
     create: function() {
@@ -204,7 +215,11 @@ TypingNinja.Game.prototype = {
                 this.blockingKeys = false;
                 this.destroyBalloon(this.activeBalloon - 1);
                 this.player._state.isJumping = false;
-                this.player._state.isOnStartPlatform = false;
+                
+                if (this.player._state.isOnStartPlatform) {
+                    this.player._state.isOnStartPlatform = false;        
+                }
+                
                 this.focusNextBalloon();
 
                 if (this.onLastBalloon()) {
@@ -220,7 +235,7 @@ TypingNinja.Game.prototype = {
                 this.player._state.isOnEndPlatform = true;
                 this.destroyBalloon(this.activeBalloon);
                 sprite.frame = 5;
-                this.submitScores();
+                this.showYouWin();
             }, this);
 
         //  enable physics on the player
@@ -229,7 +244,7 @@ TypingNinja.Game.prototype = {
 
         var keyboard = this.input.keyboard;
         keyboard.onPressCallback = function() {
-            if (this.blockingKeys || this.player._state.isOnEndPlatform) {
+            if (this.blockingKeys || this.player._state.isOnEndPlatform || this.gameState.lost) {
                 return;
             }
 
@@ -250,26 +265,104 @@ TypingNinja.Game.prototype = {
             }
         }.bind(this);
 
-        this.scoreText = this.game.add.text(10, 10, 'Score : ' + this.score, {
+        if (TypingNinja.DISPLAY_SCORE) {
+            this.scoreText = this.game.add.text(10, 10, 'Score : ' + this.score, {
                 fontSize: '20px',
                 fill: '#ddd', 
-                stroke: "#555",
+                stroke: '#555',
                 strokeThickness: 2
-        });
+            });
 
-        this.scoreText.fixedToCamera = true;
+            this.scoreText.fixedToCamera = true;    
+        }
+
+        this.startingText = this.game.add.text(
+            this.game.width / 2, 
+            this.game.height / 2, 
+            'Type glowing\nletter to begin', 
+            {
+                fontSize: '40px',
+                fill: '#ddd',
+                stroke: '#52a4c5',
+                strokeThickness: 10,
+                align: "center"
+            }
+        );
+
+        this.startingText.anchor.setTo(0.5, 0.5);
+        this.add.tween(this.startingText).to({alpha: [1, 1, 1, 1, 0.3, 1]}, 2000, Phaser.Easing.Quadratic.In, true, 0, false);
+        
         this.player.frame = 4; // set initial player pose to standing pose (frame 5)
         this.focusNextBalloon(); // focus first balloon when game starts
 
-        this.soundEffects.jump = this.game.add.audio('jump');
+        if (TypingNinja.PLAY_SFX) {
+            this.soundEffects.jump = this.game.add.audio('jump');
+        }
     },
 
     playerOut: function() {
         this.gameState.lost = true;
+        this.showGameOver();
+    },
+
+    showGameOver: function() {
+        this.gameOverText = this.game.add.text(
+            this.game.width / 2, 
+            this.game.height / 2, 
+            'Game Over', 
+            {
+                fontSize: '70px',
+                fill: '#ddd',
+                stroke: '#52a4c5',
+                strokeThickness: 10,
+                align: "center"
+            }
+        );
+
+        this.gameOverText.anchor.setTo(0.5, 0.5);
+        this.gameOverText.scale.setTo(0, 0);
+
+        this.add.tween(this.gameOverText.scale).to({x: [1.3, 1, 1.2, 1], y: [1.3, 1.2, 1, 1]}, 500, Phaser.Easing.Quadratic.InOut, true, 0, 0);
+        
+        this.gameOverText.fixedToCamera = true;
+    },
+
+    showYouWin: function() {
+        this.youWinText = this.game.add.text(
+            this.game.width / 2, 
+            this.game.height / 2, 
+            'You Win\nGreat Job', 
+            {
+                fontSize: '70px',
+                fill: '#ddd',
+                stroke: '#52a4c5',
+                strokeThickness: 10,
+                align: "center"
+            }
+        );
+
+        this.youWinText.anchor.setTo(0.5, 0.5);
+        this.youWinText.scale.setTo(0, 0);
+
+        this.add.tween(this.youWinText.scale).to(
+            {x: [1.3, 1, 1.2, 1], y: [1.3, 1.2, 1, 1]}, 
+            500, 
+            Phaser.Easing.Quadratic.InOut, 
+            true, 
+            0, 
+            0).onComplete.add(this.destroyYouWin.bind(this));
+        
+        this.youWinText.fixedToCamera = true;
+    },
+
+    destroyYouWin: function() {
+        // console.log('destroy You win');
+        this.submitScores();
     },
 
     submitScores: function() {
         if(this.core.is_done()) {
+            console.log('Submitting scores');
             return this.core.submit_score();
         }
     },
@@ -283,14 +376,17 @@ TypingNinja.Game.prototype = {
 
         if (this.gameState.lost) {
             var activeBalloon = this.getActiveBalloon();
-            player.body.position.y -= this.dropSpeed * 50;
-            activeBalloon.body.position.y -= this.dropSpeed * 50;
+
+            //player.body.position.y -= this.dropSpeed * 50;
+            //activeBalloon.body.position.y -= this.dropSpeed * 50;
         }
 
         if (!player._state.isOnStartPlatform && !player._state.isOnEndPlatform) {
-            if (this.bufferScore < this.score) {
-                this.bufferScore++;
-                this.scoreText.text = 'Score : ' + this.bufferScore;
+            if (TypingNinja.DISPLAY_SCORE) {
+                if (this.bufferScore < this.score) {
+                    this.bufferScore++;
+                    this.scoreText.text = 'Score : ' + this.bufferScore;
+                }    
             }
             
             if (!player._state.isJumping && !player._state.isOnEndPlatform) {
@@ -321,7 +417,9 @@ TypingNinja.Game.prototype = {
     },
 
     addScore: function(value) {
-        this.score += value;
+        if (TypingNinja.DISPLAY_SCORE) {
+            this.score += value;    
+        }
     },
 
     pickBalloonStyle: function() {
@@ -500,7 +598,7 @@ TypingNinja.Game.prototype = {
         this.player._state.isJumping = true;
         player.animations.play('jump', 30, false);
 
-        this.soundEffects.jump.play();
+        this.playSound('jump');
 
         var nextPosition = this.getBalloonPosition(this.activeBalloon + 1);        
         var nextBalloon = this.getNextBalloon();
@@ -511,6 +609,15 @@ TypingNinja.Game.prototype = {
         ).onComplete.add(function() {
             // nextBalloonText.destroy();
         });
+
+        if (player._state.isOnStartPlatform) {
+            var startingText = this.startingText;
+
+            this.add.tween(startingText.scale).to({ x: [1, 1.2, 0.5], y: [1, 1.2, 0.5]}, 300, Phaser.Easing.Linear.None, true, 0);
+            this.add.tween(startingText).to({ alpha: [1, 0] }, 300, Phaser.Easing.Linear.None, true, 0).onComplete.add(function() {
+                startingText.destroy();
+            });
+        }
 
         var activePosition = (player._state.isOnStartPlatform)? 
                                     { x: player.body.x + 85, y: player.body.y }: 
@@ -578,6 +685,12 @@ TypingNinja.Game.prototype = {
         this.cameraPos.x += (this.player.x - this.cameraPos.x + this.cameraCenterXOffset) * this.cameraMoveSmoothness;
         // this.cameraPos.y += (this.player.y - this.cameraPos.y) * this.cameraMoveSmoothness;
         this.camera.focusOnXY(this.cameraPos.x, this.cameraPos.y);
+    },
+
+    playSound: function(sfxName) {
+        if (TypingNinja.PLAY_SFX) {
+            this.soundEffects[sfxName].play();
+        }
     }
 };
 
