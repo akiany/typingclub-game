@@ -279,7 +279,7 @@ TypingNinja.Game.prototype = {
         this.startingText = this.game.add.text(
             this.game.width / 2, 
             this.game.height / 2, 
-            'Type glowing\nletter to begin', 
+            'Type letter in\nballoon to begin', 
             {
                 fontSize: '40px',
                 fill: '#ddd',
